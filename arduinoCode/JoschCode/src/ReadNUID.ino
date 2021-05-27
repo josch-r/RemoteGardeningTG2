@@ -96,20 +96,25 @@ void printDec(byte *buffer, byte bufferSize) {
   Serial.println();
   Serial.print("in String: ");
   Serial.println(myString);
-  sendHttpRequest(myString);
+  addNewUIDToDB(myString);
   myString = "";
 }
-void sendHttpRequest(String uidString) {
+void addNewUIDToDB(String rdifUID) {
   
   // Wenn eine Wifi-Verbindung besteht
   if (WiFi.status() == WL_CONNECTED) { //Check WiFi connection status
-    Serial.println(uidString);
+    Serial.println(rdifUID);
     // EIn Objekt der Klasse WifiClient erzeugen
     WiFiClient client;
     
     // Eine Objekt der Klasse HTTPClient erzeugen
     HTTPClient http;
-  
+    HTTPClient httpGet;
+
+    //Ziel für GET-Request
+    String url = "http://192.168.178.34:3000/plant/status/" + rdifUID;
+    httpGet.begin(client, url);
+    httpGet.addHeader("Content-Type", "application/json");
     // Das Ziel für den Post-Request definieren 
     // Http-Request  über den WifiClient verschicken
     // Achtung IP-Adresse vom Node-Server hinterlegen, IP-Adresse 
@@ -121,10 +126,10 @@ void sendHttpRequest(String uidString) {
 
     // Den Request verschicken, Request Payload 
     // JSON-String: {"temperatur": "0"}
-    String jsonString = "{\"uid\": \""+uidString+"\"}";
-    
-    int httpCode = http.POST(jsonString); 
-
+    String jsonString = "{\"uid\": \""+rdifUID+"\"}";
+    int httpGETCode = httpGet.GET(); 
+    if(httpGETCode != 200){
+      int httpCode = http.POST(jsonString); 
     // Antwort: Payload
     String payload = http.getString();                  //Get the response payload
 
@@ -135,11 +140,53 @@ void sendHttpRequest(String uidString) {
     Serial.println(payload);    //Print request response payload
 
     // Http_connection schließen
+    
     http.end();
- 
+    }
+    else {
+      Serial.println("Plant already exists in db");
+    }
+    httpGet.end();
   } else {
  
     Serial.println("Error in WiFi connection");
  
+  }
+}
+void getPlantInfo(String rdifUID){
+  if (WiFi.status() == WL_CONNECTED) { //Check WiFi connection status
+    Serial.println(rdifUID);
+    WiFiClient client;
+    HTTPClient http;
+    String url = "http://192.168.178.34:3000/plant/status/" + rdifUID;
+    http.begin(client, url);
+
+    // Den Content-Type für den Header definieren
+    http.addHeader("Content-Type", "application/json");
+
+    // Den Request verschicken, Request Payload 
+    // JSON-String: {"temperatur": "0"}
+    String jsonString = "{\"uid\": \""+rdifUID+"\"}";
+    int httpCode = http.GET(); 
+
+    // Antwort: Payload
+    if(httpCode > 0){
+    String payload = http.getString(); 
+    // Ausgabe des Return Codes
+    Serial.println(httpCode);
+    if(httpCode == 404){
+
+    }
+    else if(httpCode == 200) {
+      addNewUIDToDB(rdifUID);
+    }
+    // Ausgabe des Antwort Payloads
+    Serial.println(payload);    //Print request response payload
+
+    // Http_connection schließen
+    http.end();
+    }          
+  } else {
+    Serial.println("Error in WiFi connection");
   }
 }
