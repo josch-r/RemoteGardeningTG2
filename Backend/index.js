@@ -31,7 +31,9 @@ app.post("/plant/register", async(req, res) => {
         "rfidUID": rfidUID,
         "name": "default",
         "waterLevel": 0,
-        "lastWatered": "0/0/0"
+        "lastWatered": "0/0/0",
+        "owner": "none",
+        "plantSize": "S",
     });
     res.status(200).send("sucessfully added plant").end();
 });
@@ -39,8 +41,17 @@ app.get("/plant/status/:uid", async(req, res) => {
     let rfidUID = req.params.uid;
     console.log(rfidUID);
     //get mongoDB entry for UID
-    res.status(200).send("sucessfully added plant").end();
+    plantsCollection.findOne({ "rfidUID": rfidUID }, (err, result) => {
+        if (err) throw err;
+
+        if (result !== "") {
+            res.status(404).send("UID already exists in DB").end();
+        } else {
+            res.status(200).send("sucessfully added plant").end();
+        }
+    });
 });
+
 app.listen(port, () => {
     console.log(`RemoteGardeningBackend listening at http://localhost:${port}`);
 });
