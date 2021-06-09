@@ -39,12 +39,12 @@ void setup() {
   for (byte i = 0; i < 6; i++) {
     key.keyByte[i] = 0xFF;
   }
-
+/*
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   while (WiFi.status() != WL_CONNECTED) { 
     delay(500);
     Serial.println("Waiting for connection");
-  }
+  }*/
 }
  
 void loop() {
@@ -96,7 +96,7 @@ void printDec(byte *buffer, byte bufferSize) {
   Serial.println();
   Serial.print("in String: ");
   Serial.println(myString);
-  addNewUIDToDB(myString);
+  //addNewUIDToDB(myString);
   myString = "";
 }
 void addNewUIDToDB(String rdifUID) {

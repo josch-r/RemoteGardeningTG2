@@ -47,7 +47,7 @@ app.get("/plant/status/:uid", async(req, res) => {
         if (result !== "") {
             res.status(404).send("UID already exists in DB").end();
         } else {
-            res.status(200).send("sucessfully added plant").end();
+            res.status(200).send("plant doesnt exist in DB").end();
         }
     });
 });
