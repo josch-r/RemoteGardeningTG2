@@ -39,11 +39,12 @@ void setup() {
   for (byte i = 0; i < 6; i++) {
     key.keyByte[i] = 0xFF;
   }
-/*
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+
+  /*WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  Serial.println("Waiting for connection");
   while (WiFi.status() != WL_CONNECTED) { 
     delay(500);
-    Serial.println("Waiting for connection");
+    Serial.print(".");
   }*/
 }
  

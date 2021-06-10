@@ -6,7 +6,7 @@
 
 #include <ESP8266HTTPClient.h>
 #include <ESP8266WiFi.h>
-#include <WiFiUdp.h>
+#include "ESPAsyncWebServer.h"
 #include "WIFIconfig.h"
 
 //für esp8266 pin 15 & 0, bei arduino uno 10 & 9
@@ -14,16 +14,10 @@
 #define RST_PIN D3
 String backendIP = "http://192.168.178.34:3000";
 // Set AP credentials
-#define AP_SSID "ESPRemoteGardening"
-#define AP_PASS "aperoli"
+const char* ssid = "ESPRemoteGardening";
+const char* password = "aperoli";
 
-WiFiUDP UDP;
-IPAddress local_IP(192,168,4,1);
-IPAddress gateway(192,168,4,1);
-IPAddress subnet(255,255,255,0);
-#define UDP_PORT 4210
-// UDP Buffer
-char packetBuffer[UDP_TX_PACKET_MAX_SIZE];
+AsyncWebServer server(80);
 //STEPPER
 int stepdir = 0;
 AccelStepper stepper1 = AccelStepper(MotorInterfaceType, D0, D1, D2, D4);
@@ -54,16 +48,18 @@ void setup() {
   Serial.begin(9600);
   stepper1.setMaxSpeed(1000);
   pinMode(A0 ,INPUT_PULLUP);
-  // Begin Access Point
-  Serial.println("Starting access point...");
-  WiFi.softAPConfig(local_IP, gateway, subnet);
-  WiFi.softAP(AP_SSID, AP_PASS);
-  Serial.println(WiFi.localIP());
+  
+  // Setting the ESP as an access point
+  Serial.print("Setting AP (Access Point)…");
+  // Remove the password parameter, if you want the AP (Access Point) to be open
+  WiFi.softAP(ssid, password);
 
-  // Begin listening to UDP port
-  UDP.begin(UDP_PORT);
-  Serial.print("Listening on UDP port ");
-  Serial.println(UDP_PORT);
+  IPAddress IP = WiFi.softAPIP();
+  Serial.print("AP IP address: ");
+  Serial.println(IP);
+ 
+  // Start server
+  server.begin();
   //calibration();
   /*WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   while (WiFi.status() != WL_CONNECTED) { 
@@ -169,15 +165,6 @@ void loop() {
   // stepper1.setSpeed(400);
   //stepper1.runSpeed();
   //delay(10000);
-  UDP.parsePacket();
-  UDP.read(packetBuffer, UDP_TX_PACKET_MAX_SIZE);
-  Serial.println(packetBuffer);
-  Serial.println(packetBuffer[0]);
-  if (packetBuffer[0]){
-    //digitalWrite(2, HIGH);
-  } else {
-    //digitalWrite(2, LOW);
-  } 
 }
 //Kalibrierungsfunktion die Motor an Endschalter fährt
 
