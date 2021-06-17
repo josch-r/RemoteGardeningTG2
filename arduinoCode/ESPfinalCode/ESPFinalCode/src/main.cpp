@@ -1,4 +1,6 @@
 #include <Arduino.h>
+
+#include <Arduino.h>
 //STEPPER LIBRARY
 #include <AccelStepper.h>
 #define MotorInterfaceType 4
@@ -10,7 +12,7 @@
 
 //rfid reaDER
 #include <MFRC522.h>
-#define SS_PIN A0
+#define SS_PIN D1
 #define RST_PIN D3
 
 MFRC522 rfid(SS_PIN, RST_PIN); // Instance of the class
@@ -20,7 +22,8 @@ MFRC522::MIFARE_Key key;
 // Init array that will store new NUID 
 byte nuidPICC[4];
 
-String backendIP = "http://localhost:3000";
+String backendIP = "http://192.168.1.209:3000";
+int rfidStatus = 0;
 
 //STEPPER
 int stepdir = 0;
@@ -28,7 +31,7 @@ AccelStepper stepper1 = AccelStepper(MotorInterfaceType, D0, D1, D2, D4);
 void setup() {
   // put your setup code here, to run once:
   //STEPPER
-  Serial.begin(9600);
+  Serial.begin(115200);
   SPI.begin(); // Init SPI bus
   rfid.PCD_Init(); // Init MFRC522 
 
@@ -38,10 +41,22 @@ void setup() {
   stepper1.setMaxSpeed(1000);
   //calibration();
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  Serial.println("Waiting for connection");
   while (WiFi.status() != WL_CONNECTED) { 
     delay(500);
-    Serial.println("Waiting for connection");
+    Serial.print(".");
   }
+}
+void waterPlant(int duration){
+  Serial.print("Watering plant for ");
+  Serial.print(duration);
+  Serial.println(" milliseconds! :)");
+  //digitalWrite(pumpPin, HIGH);
+  delay(duration);
+  //digitalWrite(pumpPin, LOW);
+  Serial.println("Watered plant sucessfully");
+  Serial.println(digitalRead(SS_PIN));
+  rfidStatus = 0;
 }
 //Pflanze in unsere Datenbank hinzufügen
 void addNewUIDToDB(String rdifUID) {
@@ -51,31 +66,21 @@ void addNewUIDToDB(String rdifUID) {
     Serial.println(rdifUID);
     // EIn Objekt der Klasse WifiClient erzeugen
     WiFiClient client;
-    
     // Eine Objekt der Klasse HTTPClient erzeugen
     HTTPClient http;
-    HTTPClient httpGet;
-
-    //Ziel für GET-Request
-    String url = backendIP + "/plant/status/" + rdifUID;
-    httpGet.begin(client, url);
-    httpGet.addHeader("Content-Type", "application/json");
     // Das Ziel für den Post-Request definieren 
     // Http-Request  über den WifiClient verschicken
     // Achtung IP-Adresse vom Node-Server hinterlegen, IP-Adresse 
     // von dem Geräte hinterlegen auf dem euer Server läuft
-    String url2 = backendIP + "/plant/register";
-    http.begin(client, url2);
-
+    String url = backendIP + "/plant/register";
+    http.begin(client, url);
     // Den Content-Type für den Header definieren
     http.addHeader("Content-Type", "application/json");
 
     // Den Request verschicken, Request Payload 
     // JSON-String: {"temperatur": "0"}
     String jsonString = "{\"uid\": \""+rdifUID+"\"}";
-    int httpGETCode = httpGet.GET(); 
-    if(httpGETCode != 200){
-      int httpCode = http.POST(jsonString); 
+    int httpCode = http.POST(jsonString); 
     // Antwort: Payload
     String payload = http.getString();                  //Get the response payload
 
@@ -90,48 +95,35 @@ void addNewUIDToDB(String rdifUID) {
     http.end();
     }
     else {
-      Serial.println("Plant already exists in db");
-    }
-    httpGet.end();
-  } else {
- 
     Serial.println("Error in WiFi connection");
- 
   }
 }
 //Pflanzen infos abrufen (falls vorhanden)
 void getPlantInfoDB(String rdifUID){
   if (WiFi.status() == WL_CONNECTED) { //Check WiFi connection status
     Serial.println(rdifUID);
-    WiFiClient client;
     HTTPClient http;
     String url = backendIP + "/plant/status/" + rdifUID;
-    http.begin(client, url);
-
-    // Den Content-Type für den Header definieren
-    http.addHeader("Content-Type", "application/json");
-
-    // Den Request verschicken, Request Payload
-    String jsonString = "{\"uid\": \""+rdifUID+"\"}";
+    Serial.println(url);
+    http.begin(url.c_str());
     int httpCode = http.GET(); 
-
     // Antwort: Payload
     if(httpCode > 0){
     String payload = http.getString(); 
     // Ausgabe des Return Codes
     Serial.println(httpCode);
     if(httpCode == 200){
-
+    Serial.println(payload); 
+    waterPlant(payload.toInt());
+    //waterPlant(payload) for ... ms
     }
     else if(httpCode == 404) {
       addNewUIDToDB(rdifUID);
     }
-    // Ausgabe des Antwort Payloads
-    Serial.println(payload);    //Print request response payload
-
+    // Ausgabe des Antwort Payloads   //Print request response payload
     // Http_connection schließen
     http.end();
-    }          
+    }       
   } else {
     Serial.println("Error in WiFi connection");
   }
@@ -163,7 +155,7 @@ void lookForNewRFIDUID(){
     rfid.uid.uidByte[2] != nuidPICC[2] || 
     rfid.uid.uidByte[3] != nuidPICC[3] ) {
     Serial.println(F("A new card has been detected."));
-
+    rfidStatus = 1; //pause stepper
     // Store NUID into nuidPICC array
     for (byte i = 0; i < 4; i++) {
       nuidPICC[i] = rfid.uid.uidByte[i];
@@ -188,7 +180,14 @@ void loop() {
   // stepper1.setSpeed(400);
   //stepper1.runSpeed();
   //delay(10000);
-  lookForNewRFIDUID();
+  if(rfidStatus == 0){
+    //run Stepper
+    lookForNewRFIDUID();
+  }
+  else{
+    //Serial.println("Doing Something");
+    //do something
+  }
 }
 //Kalibrierungsfunktion die Motor an Endschalter fährt
 

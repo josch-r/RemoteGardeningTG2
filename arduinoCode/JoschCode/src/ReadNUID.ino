@@ -21,8 +21,8 @@
 #include "config.h"
 
 //für esp8266 pin 15 & 0, bei arduino uno 10 & 9
-#define SS_PIN 15
-#define RST_PIN 0
+#define SS_PIN A0
+#define RST_PIN D3
  
 MFRC522 rfid(SS_PIN, RST_PIN); // Instance of the class
 
