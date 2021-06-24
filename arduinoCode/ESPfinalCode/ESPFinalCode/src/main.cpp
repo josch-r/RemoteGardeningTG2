@@ -8,14 +8,21 @@
 #include <ESP8266HTTPClient.h>
 #include <ESP8266WiFi.h>
 #include "WIFIconfig.h"
-
+#include <WiFiUdp.h>
+#include <NTPClient.h>
 //RFID READER
 #include <MFRC522.h>
-#define SS_PIN D1
-#define RST_PIN D3
+#define SS_PIN D0
+#define RST_PIN D8
+
+//TIMES 
+const long utcOffsetInSeconds = 7200;
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP, "pool.ntp.org", utcOffsetInSeconds);
+int lastWatered = 0;
 
 MFRC522 rfid(SS_PIN, RST_PIN); // Instance of the class
-int rfidStatus = 0; //Status um zu erkennen ob eine karte gescanned wurde
+int rfidStatus = 2; //Status um zu erkennen ob eine karte gescanned wurde
 MFRC522::MIFARE_Key key; 
 
 // Init array that will store new NUID 
@@ -28,7 +35,7 @@ String backendIP = "http://192.168.1.209:3000";
 
 //STEPPER
 int stepdir = 0;
-AccelStepper stepper1 = AccelStepper(MotorInterfaceType, D0, D1, D2, D4);
+AccelStepper stepper = AccelStepper(MotorInterfaceType, D1, D2, D3, D4);
 
 void setup() {
   //Reader initiation
@@ -40,7 +47,8 @@ void setup() {
     key.keyByte[i] = 0xFF;
   }
   //Stepper setup
-  stepper1.setMaxSpeed(1000);
+  stepper.setMaxSpeed(100);
+  stepper.setAcceleration(50);
   //calibration(); //funktion um den endschalter zu erreichen 
   pinMode(pumpPin, OUTPUT); //PumpenPin definieren
   //Mit WIFI verbinden
@@ -50,8 +58,10 @@ void setup() {
     delay(500);
     Serial.print(".");
   }
+  Serial.println(); 
   Serial.print("Sucessfully connected to "); 
   Serial.println(WIFI_SSID); 
+  timeClient.begin();
 }
 //Funktion zum schalte der Pumpe für den gesetzten Amount an millisekunden 
 void waterPlant(int duration){
@@ -178,16 +188,38 @@ void lookForNewRFIDUID(){
 }
 void runStepper() {
     //Do Stepper things here!
+     stepper.setCurrentPosition(0);
+  Serial.println("pos 0");
+  delay(200);
+  // Run the motor forward at 200 steps/second until the motor reaches 400 steps (2 revolutions):
+  while (stepper.currentPosition() != 400)  {
+    stepper.setSpeed(100);
+    stepper.runSpeed();
+    yield();
+  }
+  delay(200);
+  // Reset the position to 0:
+  stepper.setCurrentPosition(0);
 }
 void loop() {
-  // stepper1.setSpeed(400);
-  //stepper1.runSpeed();
-  //delay(10000);
+  
+  //uhrzeit abfragen
+  timeClient.update();
+  Serial.println(timeClient.getHours());
+  if(timeClient.getHours() == 11 || timeClient.getHours() == 18 && timeClient.getHours() != lastWatered) {
+    rfidStatus = 0;
+    delay(5000);
+  }
+  else {
+    delay(10000);
+  }
+
   if(rfidStatus == 0){
     //run Stepper
+    runStepper();
     lookForNewRFIDUID();
   }
-  else{
+  else if(rfidStatus == 1){
     //Serial.println("Doing Something");
     //do something
   }
