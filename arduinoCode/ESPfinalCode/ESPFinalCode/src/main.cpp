@@ -11,60 +11,82 @@
 #include <WiFiUdp.h>
 #include <NTPClient.h>
 //RFID READER
+/*
+ * Pin layout für unseren Reader:
+ * -----------------------------------------------------------------------------------------
+ *             MFRC522      Arduino       Esp   
+ *             Reader/PCD   Uno/101       8266      
+ * Signal      Pin          Pin           Pin       
+ * -----------------------------------------------------------------------------------------
+ * RST/Reset   RST          9             D8        
+ * SPI SS      SDA(SS)      10            D0        
+ * SPI MOSI    MOSI         11 / ICSP-4   D7        
+ * SPI MISO    MISO         12 / ICSP-1   D6        
+ * SPI SCK     SCK          13 / ICSP-3   D5        
+ */
+
 #include <MFRC522.h>
 #define SS_PIN D0
-#define RST_PIN D8
+#define RST_PIN A0
 
-//TIMES 
+//TIMES
 const long utcOffsetInSeconds = 7200;
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "pool.ntp.org", utcOffsetInSeconds);
 int lastWatered = 0;
 
-MFRC522 rfid(SS_PIN, RST_PIN); // Instance of the class
-int rfidStatus = 2; //Status um zu erkennen ob eine karte gescanned wurde
-MFRC522::MIFARE_Key key; 
+// Timer: Wait for RFID-Reading
+long prevTime = 0;
+long timer = 1000;
 
-// Init array that will store new NUID 
+MFRC522 rfid(SS_PIN, RST_PIN); // Instance of the class
+int rfidStatus = 2;            //Status um zu erkennen ob eine karte gescanned wurde
+MFRC522::MIFARE_Key key;
+
+// Init array that will store new NUID
 byte nuidPICC[4];
 
 //WASSER PUMPE
 #define pumpPin A0
 //backend IP entsprechend eurer IP anpassen
-String backendIP = "http://192.168.1.209:3000";
+String backendIP = "http://192.168.178.146:3000";
 
 //STEPPER
 int stepdir = 0;
 AccelStepper stepper = AccelStepper(MotorInterfaceType, D1, D2, D3, D4);
 
-void setup() {
+void setup()
+{
   //Reader initiation
   Serial.begin(115200);
-  SPI.begin(); // Init SPI bus
-  rfid.PCD_Init(); // Init MFRC522 
+  SPI.begin();     // Init SPI bus
+  rfid.PCD_Init(); // Init MFRC522
 
-  for (byte i = 0; i < 6; i++) {
+  for (byte i = 0; i < 6; i++)
+  {
     key.keyByte[i] = 0xFF;
   }
   //Stepper setup
   stepper.setMaxSpeed(100);
   stepper.setAcceleration(50);
-  //calibration(); //funktion um den endschalter zu erreichen 
+  //calibration(); //funktion um den endschalter zu erreichen
   pinMode(pumpPin, OUTPUT); //PumpenPin definieren
   //Mit WIFI verbinden
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   Serial.println("Waiting for connection");
-  while (WiFi.status() != WL_CONNECTED) { 
+  while (WiFi.status() != WL_CONNECTED)
+  {
     delay(500);
     Serial.print(".");
   }
-  Serial.println(); 
-  Serial.print("Sucessfully connected to "); 
-  Serial.println(WIFI_SSID); 
+  Serial.println();
+  Serial.print("Sucessfully connected to ");
+  Serial.println(WIFI_SSID);
   timeClient.begin();
 }
-//Funktion zum schalte der Pumpe für den gesetzten Amount an millisekunden 
-void waterPlant(int duration){
+//Funktion zum schalte der Pumpe für den gesetzten Amount an millisekunden
+void waterPlant(int duration)
+{
   Serial.print("Watering plant for ");
   Serial.print(duration);
   Serial.println(" milliseconds! :)");
@@ -76,8 +98,10 @@ void waterPlant(int duration){
   rfidStatus = 0;
 }
 //neue Pflanze in unsere Datenbank hinzufügen
-void addNewUIDToDB(String rdifUID) {
-  if (WiFi.status() == WL_CONNECTED) { //Check WiFi connection status
+void addNewUIDToDB(String rdifUID)
+{
+  if (WiFi.status() == WL_CONNECTED)
+  { //Check WiFi connection status
     Serial.println(rdifUID);
     WiFiClient client;
     HTTPClient http;
@@ -88,58 +112,70 @@ void addNewUIDToDB(String rdifUID) {
     http.addHeader("Content-Type", "application/json");
 
     // JSON-String: {"uid": "031231"}
-    String jsonString = "{\"uid\": \""+rdifUID+"\"}";
-    int httpCode = http.POST(jsonString); 
+    String jsonString = "{\"uid\": \"" + rdifUID + "\"}";
+    int httpCode = http.POST(jsonString);
     // Antwort: Payload
-    String payload = http.getString();//Get the response payload
+    String payload = http.getString(); //Get the response payload
 
     // Ausgabe des Return Codes
-    Serial.println(httpCode);   //Print HTTP return code
+    Serial.println(httpCode); //Print HTTP return code
 
     // Ausgabe des Antwort Payloads
-    Serial.println(payload);    //Print request response payload
+    Serial.println(payload); //Print request response payload
 
     // Http_connection schließen
     http.end();
-    }
-    else {
+    rfidStatus = 0;
+  }
+  else
+  {
     Serial.println("Error in WiFi connection");
   }
 }
 //Pflanzen infos abrufen (falls vorhanden)
-void getPlantInfoDB(String rdifUID){
-  if (WiFi.status() == WL_CONNECTED) { //Check WiFi connection status
+void getPlantInfoDB(String rdifUID)
+{
+  if (WiFi.status() == WL_CONNECTED)
+  { //Check WiFi connection status
     Serial.println(rdifUID);
     HTTPClient http;
+    WiFiClient client;
     //Zieladresse für Get request
     String url = backendIP + "/plant/status/" + rdifUID;
     Serial.println(url);
-    http.begin(url.c_str());
-    int httpCode = http.GET(); 
+    http.begin(client, url.c_str());
+    int httpCode = http.GET();
     // Antwort: Payload
-    if(httpCode > 0){
-    String payload = http.getString(); 
-    // Ausgabe des Return Codes
-    Serial.println(httpCode);
-    if(httpCode == 200){
-    Serial.println(payload); 
-    //unsere Pflanze gießen für die ermittelte Zeit
-    waterPlant(payload.toInt());
+    if (httpCode > 0)
+    {
+      String payload = http.getString();
+      // Ausgabe des Return Codes
+      Serial.println(httpCode);
+      if (httpCode == 200)
+      {
+        Serial.println(payload);
+        //unsere Pflanze gießen für die ermittelte Zeit
+        waterPlant(payload.toInt());
+      }
+      else if (httpCode == 404)
+      {
+        addNewUIDToDB(rdifUID);
+      }
+      //Http_connection schließen
+      http.end();
     }
-    else if(httpCode == 404) {
-      addNewUIDToDB(rdifUID);
-    }
-    //Http_connection schließen
-    http.end();
-    }       
-  } else {
+  }
+  else
+  {
     Serial.println("Error in WiFi connection");
   }
 }
 //Funktion um RFID UID in DezimalZahl bzw String umzuwandeln, damit es für andere Funktionen brauchbar ist
-void printDec(byte *buffer, byte bufferSize) {
+void printDec(byte *buffer, byte bufferSize)
+{
   String myString;
-  for (byte i = 0; i < bufferSize; i++) {
+  for (byte i = 0; i < bufferSize; i++)
+  {
     Serial.print(buffer[i] < 0x10 ? " 0" : " ");
     Serial.print(buffer[i], DEC);
     myString = myString + (String)buffer[i];
@@ -151,34 +187,38 @@ void printDec(byte *buffer, byte bufferSize) {
   getPlantInfoDB(myString);
   myString = "";
 }
-//Loop funktion um nach neuen RFID Tags zu suchen 
-void lookForNewRFIDUID(){
-  if ( ! rfid.PICC_IsNewCardPresent())
+//Loop funktion um nach neuen RFID Tags zu suchen
+void lookForNewRFIDUID()
+{
+  if (!rfid.PICC_IsNewCardPresent())
     return;
 
   // Verify if the NUID has been readed
-  if ( ! rfid.PICC_ReadCardSerial())
+  if (!rfid.PICC_ReadCardSerial())
     return;
 
-//Wenn wir eine neue Karte erkennen
-  if (rfid.uid.uidByte[0] != nuidPICC[0] || 
-    rfid.uid.uidByte[1] != nuidPICC[1] || 
-    rfid.uid.uidByte[2] != nuidPICC[2] || 
-    rfid.uid.uidByte[3] != nuidPICC[3] ) {
+  //Wenn wir eine neue Karte erkennen
+  if (rfid.uid.uidByte[0] != nuidPICC[0] ||
+      rfid.uid.uidByte[1] != nuidPICC[1] ||
+      rfid.uid.uidByte[2] != nuidPICC[2] ||
+      rfid.uid.uidByte[3] != nuidPICC[3])
+  {
     Serial.println(F("A new card has been detected."));
     rfidStatus = 1; //pause stepper
     // Store NUID into nuidPICC array
-    for (byte i = 0; i < 4; i++) {
+    for (byte i = 0; i < 4; i++)
+    {
       nuidPICC[i] = rfid.uid.uidByte[i];
     }
-   
+
     Serial.println(F("The NUID tag is:"));
     Serial.println();
     Serial.print(F("In dec: "));
     printDec(rfid.uid.uidByte, rfid.uid.size);
     Serial.println();
   }
-  else Serial.println(F("Card read previously."));
+  else
+    Serial.println(F("Card read previously."));
 
   // Halt PICC
   rfid.PICC_HaltA();
@@ -186,40 +226,64 @@ void lookForNewRFIDUID(){
   // Stop encryption on PCD
   rfid.PCD_StopCrypto1();
 }
-void runStepper() {
-    //Do Stepper things here!
-     stepper.setCurrentPosition(0);
-  Serial.println("pos 0");
-  delay(200);
+void runStepper()
+{
   // Run the motor forward at 200 steps/second until the motor reaches 400 steps (2 revolutions):
-  while (stepper.currentPosition() != 400)  {
-    stepper.setSpeed(100);
+  while (stepper.currentPosition() != 200)
+  {
+    stepper.setSpeed(500);
     stepper.runSpeed();
+    Serial.print("Stepper pos: ");
+    Serial.println(stepper.currentPosition());
     yield();
   }
-  delay(200);
-  // Reset the position to 0:
-  stepper.setCurrentPosition(0);
 }
-void loop() {
-  
+
+void loop()
+{
+
   //uhrzeit abfragen
   timeClient.update();
   Serial.println(timeClient.getHours());
-  if(timeClient.getHours() == 11 || timeClient.getHours() == 18 && timeClient.getHours() != lastWatered) {
+  if (timeClient.getHours() == 15 || timeClient.getHours() == 18 && timeClient.getHours() != lastWatered)
+  {
     rfidStatus = 0;
+    stepper.setCurrentPosition(0);
+    lastWatered = timeClient.getHours();
+    //rfid status Kalibrierung
+  }
+  else
+  {
     delay(5000);
   }
-  else {
-    delay(10000);
-  }
 
-  if(rfidStatus == 0){
+  int counter = 0;
+  int maxRotations = 700;
+  if (rfidStatus == 0)
+  {
     //run Stepper
-    runStepper();
-    lookForNewRFIDUID();
+    if (counter < maxRotations)
+    {
+      runStepper();
+      prevTime = millis();
+
+      while (1)
+      {
+        if (millis() > timer + prevTime)
+        {
+          break;
+        }
+        lookForNewRFIDUID();
+      }
+    }
+    else
+    {
+      Serial.println("Ende der gewindestange erreicht");
+      rfidStatus = 2;
+    }
   }
-  else if(rfidStatus == 1){
+  else if (rfidStatus == 1)
+  {
     //Serial.println("Doing Something");
     //do something
   }
