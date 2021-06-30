@@ -75,6 +75,44 @@ app.post("/plant/register", async (req, res) => {
     });
     res.status(200).send("sucessfully added plant").end();
 });
+function decideWater(entry) {
+    let timeNow = Date.now();
+    let waterTime = 0;
+    let lastWatered = entry.lastWatered;
+    let timeDifference = timeNow - lastWatered;
+    console.log("The Time difference is: "+timeDifference+ " in seconds");
+    switch (entry.waterLevel) {
+        case 1:
+            waterTime = 20000;
+            updateLastWatered(entry.rfidUID);
+            break;
+        case 2:
+            if(timeDifference > 43200) {
+            waterTime = 20000;
+            }
+            break;
+        case 3:
+            if(timeDifference > 86400) {
+                waterTime = 20000;
+                }
+                break;
+        case 4:
+            if(timeDifference > 172800) {
+                waterTime = 20000;
+                }
+                break;
+        case 5:
+            if(timeDifference > 259200) {
+                waterTime = 20000;
+                }
+                break;
+    }
+    if(waterTime == 0){
+        console.log("this plant doesn't need Water right now");
+    }
+    return waterTime;
+}
+
 app.get("/plant/status/:uid", async (req, res) => {
     let rfidUID = req.params.uid;
     console.log(rfidUID);
@@ -83,26 +121,8 @@ app.get("/plant/status/:uid", async (req, res) => {
         if (err) throw err;
         if (result !== null) {
             console.log(result);
-            let waterMS = 0;
-            switch (result.waterLevel) {
-                case 1:
-                    waterMS = 13000;
-                    break;
-                case 2:
-                    waterMS = 14500;
-                    break;
-                case 3:
-                    waterMS = 16000;
-                    break;
-                case 4:
-                    waterMS = 17500;
-                    break;
-                case 5:
-                    waterMS = 19000;
-                    break;
-            }
+            let waterMS = decideWater(result);
             res.status(200).send(waterMS.toString()).end();
-            updateLastWatered(result.rfidUID);
         } else {
             res.status(404).send("plant doesnt exist in DB").end();
         }

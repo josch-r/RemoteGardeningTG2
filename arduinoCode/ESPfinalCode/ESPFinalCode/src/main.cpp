@@ -39,6 +39,10 @@ int lastWatered = 0;
 long prevTime = 0;
 long timer = 1000;
 
+//HTTP client: 
+HTTPClient sender;
+WiFiClient wifi;
+
 MFRC522 rfid(SS_PIN, RST_PIN); // Instance of the class
 int rfidStatus = 2;            //Status um zu erkennen ob eine karte gescanned wurde
 MFRC522::MIFARE_Key key;
@@ -51,7 +55,7 @@ byte nuidPICC[4];
 //endschalter
 #define endSchalter A0
 //backend IP entsprechend eurer IP anpassen
-String backendIP = "http://192.168.178.146:3000";
+String backendIP = "http://192.168.178.153:3000";
 
 //STEPPER
 int stepdir = 0;
@@ -88,6 +92,7 @@ void setup()
   Serial.println(WIFI_SSID);
   timeClient.begin();
   //Kalibrierung
+  Serial.println("calibrating");
   calibration(); //funktion um den endschalter zu erreichen
 }
 //Funktion zum schalte der Pumpe für den gesetzten Amount an millisekunden
@@ -143,13 +148,50 @@ void getPlantInfoDB(String rdifUID)
 {
   if (WiFi.status() == WL_CONNECTED)
   { //Check WiFi connection status
-    Serial.println(rdifUID);
-    HTTPClient http;
+  Serial.println(rdifUID);
+  String url = backendIP + "/plant/status/" + rdifUID;
+  Serial.println(url);
+  sender.begin(wifi, url);
+
+    // HTTP-Code der Response speichern
+    int httpCode = sender.GET();
+    Serial.println(httpCode);
+    if (httpCode > 0) {
+      
+      // Anfrage wurde gesendet und Server hat geantwortet
+      // Info: Der HTTP-Code für 'OK' ist 200
+
+        // Hier wurden die Daten vom Server empfangen
+
+        // String vom Webseiteninhalt speichern
+      String payload = sender.getString();
+      // Ausgabe des Return Codes
+      Serial.println(httpCode);
+      if (httpCode == 200)
+      {
+        Serial.println(payload);
+        //unsere Pflanze gießen für die ermittelte Zeit
+        waterPlant(payload.toInt());
+      }
+      else if (httpCode == 404)
+      {
+        addNewUIDToDB(rdifUID);
+      }
+      
+      
+    }else{
+      // Falls HTTP-Error
+      Serial.printf("HTTP-Error");
+    }
+
+    // Wenn alles abgeschlossen ist, wird die Verbindung wieder beendet
+    sender.end();
+    /*HTTPClient http;
     WiFiClient client;
     //Zieladresse für Get request
     String url = backendIP + "/plant/status/" + rdifUID;
     Serial.println(url);
-    http.begin(client, url);
+    http.begin(url);
     int httpCode = http.GET();
     // Antwort: Payload
     if (httpCode > 0)
@@ -175,6 +217,7 @@ void getPlantInfoDB(String rdifUID)
       Serial.println("error in GET request");
       Serial.println(httpCode);
     }
+  } */
   }
   else
   {
@@ -240,9 +283,9 @@ void lookForNewRFIDUID()
 void runStepper()
 {
   // Run the motor forward at 200 steps/second until the motor reaches 400 steps (2 revolutions):
-  while (stepper.currentPosition() != 200)
+  while (stepper.currentPosition() != -600)
   {
-    stepper.setSpeed(500);
+    stepper.setSpeed(-500);
     stepper.runSpeed();
     //Serial.print("Stepper pos: ");
     //Serial.println(stepper.currentPosition());
@@ -255,10 +298,10 @@ void calibration()
   {
     if (analogRead(endSchalter) < 600)
     {
-      stepper.setSpeed(-500);
+      stepper.setSpeed(500);
       stepper.runSpeed();
       //Serial.print("Stepper pos: ");
-      Serial.println(stepper.currentPosition());
+      //Serial.println(stepper.currentPosition());
       yield();
     }
     else
@@ -280,7 +323,7 @@ void loop()
 
   Serial.print("Rfid status ist: ");
   Serial.println(rfidStatus);
-  if (timeClient.getHours() == 15 || timeClient.getHours() == 18 && timeClient.getHours() != lastWatered)
+  if (timeClient.getHours() == 13 || timeClient.getHours() == 18 && timeClient.getHours() != lastWatered)
   {
     rfidStatus = 0;
     stepper.setCurrentPosition(0);
@@ -299,8 +342,10 @@ void loop()
     if (counter < maxRotations)
     {
       runStepper();
+      counter = counter +1;
       prevTime = millis();
-
+      Serial.print("currently at step: ");
+      Serial.println(counter);
       while (1)
       {
         if (millis() > timer + prevTime)
