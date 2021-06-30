@@ -55,7 +55,7 @@ byte nuidPICC[4];
 //endschalter
 #define endSchalter A0
 //backend IP entsprechend eurer IP anpassen
-String backendIP = "http://192.168.178.153:3000";
+String backendIP = "http://192.168.178.146:3000";
 
 //STEPPER
 int stepdir = 0;
