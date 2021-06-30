@@ -35,13 +35,13 @@ async function sendNotiMail(uid, wifiName) {
     let transporter = nodemailer.createTransport({
         service: 'gmail',
         auth: {
-            user: 'youremail@gmail.com',
-            pass: 'yourpassword'
+            user: 'remote.gardining@gmail.com',
+            pass: 'WS2020iot'
         }
     });
 
     let mailOptions = {
-        from: 'youremail@gmail.com',
+        from: 'remote.gardining@gmail.com',
         to: 'joschua.rothenbacher@hfg.design, jannes.blobel@hfg.design, fabienne.vatter@hfg.design',
         subject: 'A new Plant has been added to your remote garden!',
         text: 'Hi ihr Aperolis! Eine neue Pflanze wurde erkannt die UID dazu ist ' + uid + '. Der Wifi name lautet: ' + wifiName + 'GaLiGrü! Euer Backend <3',
@@ -63,6 +63,7 @@ app.get("/", (req, res) => {
 
 app.post("/plant/register", async (req, res) => {
     let rfidUID = req.body.uid;
+    let wifiName = req.body.wifiName;
     console.log(rfidUID);
     //add new mongoDB entry
     plantsCollection.insertOne({
@@ -74,6 +75,7 @@ app.post("/plant/register", async (req, res) => {
         plantSize: "S",
     });
     res.status(200).send("sucessfully added plant").end();
+    await sendNotiMail(rfidUID, wifiName);
 });
 function decideWater(entry) {
     let timeNow = Date.now() / 1000;

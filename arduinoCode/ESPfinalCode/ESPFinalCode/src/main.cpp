@@ -123,7 +123,7 @@ void addNewUIDToDB(String rdifUID)
     http.addHeader("Content-Type", "application/json");
 
     // JSON-String: {"uid": "031231"}
-    String jsonString = "{\"uid\": \"" + rdifUID + "\"}";
+    String jsonString = "{\"uid\": \"" + rdifUID + "\",wifiName\": \""+ WIFI_SSID + "\"}";
     int httpCode = http.POST(jsonString);
     // Antwort: Payload
     String payload = http.getString(); //Get the response payload
