@@ -109,11 +109,11 @@ void waterPlant(int duration)
   rfidStatus = 0;
 }
 //neue Pflanze in unsere Datenbank hinzufügen
-void addNewUIDToDB(String rdifUID)
+void addNewUIDToDB(String rfidUID)
 {
   if (WiFi.status() == WL_CONNECTED)
   { //Check WiFi connection status
-    Serial.println(rdifUID);
+    Serial.println(rfidUID);
     WiFiClient client;
     HTTPClient http;
     // Ziel des Post-Requests
@@ -123,7 +123,8 @@ void addNewUIDToDB(String rdifUID)
     http.addHeader("Content-Type", "application/json");
 
     // JSON-String: {"uid": "031231"}
-    String jsonString = "{\"uid\": \"" + rdifUID + "\",wifiName\": \""+ WIFI_SSID + "\"}";
+    String jsonString = "{\"uid\":\"" + rfidUID + "\",\"wifiName\": \"" + WIFI_SSID + "\"}";
+    //String jsonString = "{\"uid\": \"" + rdifUID + "\,"wifiName\": \""+ WIFI_SSID + "\"}";
     int httpCode = http.POST(jsonString);
     // Antwort: Payload
     String payload = http.getString(); //Get the response payload
