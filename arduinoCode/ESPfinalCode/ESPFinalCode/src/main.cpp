@@ -18,7 +18,7 @@
  *             Reader/PCD   Uno/101       8266      
  * Signal      Pin          Pin           Pin       
  * -----------------------------------------------------------------------------------------
- * RST/Reset   RST          9             D8        
+ * RST/Reset   RST          9             A0        
  * SPI SS      SDA(SS)      10            D0        
  * SPI MOSI    MOSI         11 / ICSP-4   D7        
  * SPI MISO    MISO         12 / ICSP-1   D6        
@@ -47,13 +47,16 @@ MFRC522::MIFARE_Key key;
 byte nuidPICC[4];
 
 //WASSER PUMPE
-#define pumpPin A0
+#define pumpPin D8
+//endschalter
+#define endSchalter A0
 //backend IP entsprechend eurer IP anpassen
 String backendIP = "http://192.168.178.146:3000";
 
 //STEPPER
 int stepdir = 0;
 AccelStepper stepper = AccelStepper(MotorInterfaceType, D1, D2, D3, D4);
+void calibration();
 
 void setup()
 {
@@ -69,8 +72,9 @@ void setup()
   //Stepper setup
   stepper.setMaxSpeed(100);
   stepper.setAcceleration(50);
-  //calibration(); //funktion um den endschalter zu erreichen
+
   pinMode(pumpPin, OUTPUT); //PumpenPin definieren
+  pinMode(endSchalter, INPUT_PULLUP);
   //Mit WIFI verbinden
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   Serial.println("Waiting for connection");
@@ -83,6 +87,8 @@ void setup()
   Serial.print("Sucessfully connected to ");
   Serial.println(WIFI_SSID);
   timeClient.begin();
+  //Kalibrierung
+  calibration(); //funktion um den endschalter zu erreichen
 }
 //Funktion zum schalte der Pumpe für den gesetzten Amount an millisekunden
 void waterPlant(int duration)
@@ -90,9 +96,9 @@ void waterPlant(int duration)
   Serial.print("Watering plant for ");
   Serial.print(duration);
   Serial.println(" milliseconds! :)");
-  //digitalWrite(pumpPin, HIGH);
+  digitalWrite(pumpPin, HIGH);
   delay(duration);
-  //digitalWrite(pumpPin, LOW);
+  digitalWrite(pumpPin, LOW);
   Serial.println("Watered plant sucessfully");
   Serial.println(digitalRead(SS_PIN));
   rfidStatus = 0;
@@ -143,7 +149,7 @@ void getPlantInfoDB(String rdifUID)
     //Zieladresse für Get request
     String url = backendIP + "/plant/status/" + rdifUID;
     Serial.println(url);
-    http.begin(client, url.c_str());
+    http.begin(client, url);
     int httpCode = http.GET();
     // Antwort: Payload
     if (httpCode > 0)
@@ -163,6 +169,11 @@ void getPlantInfoDB(String rdifUID)
       }
       //Http_connection schließen
       http.end();
+    }
+    else
+    {
+      Serial.println("error in GET request");
+      Serial.println(httpCode);
     }
   }
   else
@@ -233,23 +244,48 @@ void runStepper()
   {
     stepper.setSpeed(500);
     stepper.runSpeed();
-    Serial.print("Stepper pos: ");
-    Serial.println(stepper.currentPosition());
+    //Serial.print("Stepper pos: ");
+    //Serial.println(stepper.currentPosition());
     yield();
   }
 }
+void calibration()
+{
+  while (1)
+  {
+    if (analogRead(endSchalter) < 600)
+    {
+      stepper.setSpeed(-500);
+      stepper.runSpeed();
+      //Serial.print("Stepper pos: ");
+      Serial.println(stepper.currentPosition());
+      yield();
+    }
+    else
+    {
+      break;
+    }
+  }
+}
 
+int counter = 0;
+int maxRotations = 700;
 void loop()
 {
 
   //uhrzeit abfragen
   timeClient.update();
+  Serial.print("Es ist Stunde: ");
   Serial.println(timeClient.getHours());
+
+  Serial.print("Rfid status ist: ");
+  Serial.println(rfidStatus);
   if (timeClient.getHours() == 15 || timeClient.getHours() == 18 && timeClient.getHours() != lastWatered)
   {
     rfidStatus = 0;
     stepper.setCurrentPosition(0);
     lastWatered = timeClient.getHours();
+    Serial.println("Es ist zeit zu gießen");
     //rfid status Kalibrierung
   }
   else
@@ -257,8 +293,6 @@ void loop()
     delay(5000);
   }
 
-  int counter = 0;
-  int maxRotations = 700;
   if (rfidStatus == 0)
   {
     //run Stepper

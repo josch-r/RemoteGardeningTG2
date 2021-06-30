@@ -23,6 +23,14 @@ async function connectDB() {
 }
 connectDB();
 
+var address,
+    ifaces = require('os').networkInterfaces();
+for (var dev in ifaces) {
+    ifaces[dev].filter((details) => details.family === 'IPv4' && details.internal === false ? address = details.address : undefined);
+}
+
+console.log(address);
+
 async function sendNotiMail(uid, wifiName) {
     let transporter = nodemailer.createTransport({
         service: 'gmail',
@@ -39,7 +47,7 @@ async function sendNotiMail(uid, wifiName) {
         text: 'Hi ihr Aperolis! Eine neue Pflanze wurde erkannt die UID dazu ist ' + uid + '. Der Wifi name lautet: ' + wifiName + 'GaLiGrü! Euer Backend <3',
     };
 
-    transporter.sendMail(mailOptions, function(error, info) {
+    transporter.sendMail(mailOptions, function (error, info) {
         if (error) {
             console.log(error);
         } else {
@@ -53,7 +61,7 @@ app.get("/", (req, res) => {
     res.send("service is alive");
 });
 
-app.post("/plant/register", async(req, res) => {
+app.post("/plant/register", async (req, res) => {
     let rfidUID = req.body.uid;
     console.log(rfidUID);
     //add new mongoDB entry
@@ -67,7 +75,7 @@ app.post("/plant/register", async(req, res) => {
     });
     res.status(200).send("sucessfully added plant").end();
 });
-app.get("/plant/status/:uid", async(req, res) => {
+app.get("/plant/status/:uid", async (req, res) => {
     let rfidUID = req.params.uid;
     console.log(rfidUID);
     //get mongoDB entry for UID
@@ -78,19 +86,19 @@ app.get("/plant/status/:uid", async(req, res) => {
             let waterMS = 0;
             switch (result.waterLevel) {
                 case 1:
-                    waterMS = 3000;
+                    waterMS = 13000;
                     break;
                 case 2:
-                    waterMS = 4500;
+                    waterMS = 14500;
                     break;
                 case 3:
-                    waterMS = 6000;
+                    waterMS = 16000;
                     break;
                 case 4:
-                    waterMS = 7500;
+                    waterMS = 17500;
                     break;
                 case 5:
-                    waterMS = 9000;
+                    waterMS = 19000;
                     break;
             }
             res.status(200).send(waterMS.toString()).end();
