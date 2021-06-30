@@ -33,7 +33,10 @@ console.log(address);
 
 async function sendNotiMail(uid, wifiName) {
     let transporter = nodemailer.createTransport({
-        service: 'gmail',
+        //service: 'gmail',
+        host: "smtp.gmail.com",
+        port: 587,
+        secure: false, // true for 465, false for other ports
         auth: {
             user: 'remote.gardining@gmail.com',
             pass: '#WS2020iot'
@@ -44,7 +47,7 @@ async function sendNotiMail(uid, wifiName) {
         from: 'remote.gardining@gmail.com',
         to: 'joschua.rothenbacher@hfg.design, jannes.blobel@hfg.design, fabienne.vatter@hfg.design',
         subject: 'A new Plant has been added to your remote garden!',
-        text: 'Hi ihr Aperolis! Eine neue Pflanze wurde erkannt die UID dazu ist ' + uid + '. Der Wifi name lautet: ' + wifiName + 'GaLiGrü! Euer Backend <3',
+        text: 'Hi ihr Aperolis! Eine neue Pflanze wurde erkannt die UID dazu ist : ' + uid + '. Der Wifi name lautet: ' + wifiName + ' GaLiGrü! Euer Backend <3',
     };
 
     transporter.sendMail(mailOptions, function (error, info) {
