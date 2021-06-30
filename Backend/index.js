@@ -36,7 +36,7 @@ async function sendNotiMail(uid, wifiName) {
         service: 'gmail',
         auth: {
             user: 'remote.gardining@gmail.com',
-            pass: 'WS2020iot'
+            pass: '#WS2020iot'
         }
     });
 
