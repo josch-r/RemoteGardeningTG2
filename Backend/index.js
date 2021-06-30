@@ -76,38 +76,38 @@ app.post("/plant/register", async (req, res) => {
     res.status(200).send("sucessfully added plant").end();
 });
 function decideWater(entry) {
-    let timeNow = Date.now() * 1000;
+    let timeNow = Date.now() / 1000;
     let waterTime = 0;
-    let lastWatered = entry.lastWatered * 1000;
+    let lastWatered = entry.lastWatered / 1000;
     let timeDifference = timeNow - lastWatered;
-    console.log("The Time difference is: "+ timeDifference+ " in seconds");
+    console.log("The Time difference is: " + timeDifference + " in seconds");
     switch (entry.waterLevel) {
         case 1:
             waterTime = 20000;
             updateLastWatered(entry.rfidUID);
             break;
         case 2:
-            if(timeDifference > 43200) {
-            waterTime = 20000;
+            if (timeDifference > 43200) {
+                waterTime = 20000;
             }
             break;
         case 3:
-            if(timeDifference > 86400) {
+            if (timeDifference > 86400) {
                 waterTime = 20000;
-                }
-                break;
+            }
+            break;
         case 4:
-            if(timeDifference > 172800) {
+            if (timeDifference > 172800) {
                 waterTime = 20000;
-                }
-                break;
+            }
+            break;
         case 5:
-            if(timeDifference > 259200) {
+            if (timeDifference > 259200) {
                 waterTime = 20000;
-                }
-                break;
+            }
+            break;
     }
-    if(waterTime == 0){
+    if (waterTime == 0) {
         console.log("this plant doesn't need Water right now");
     }
     return waterTime;
