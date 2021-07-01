@@ -324,7 +324,7 @@ void loop()
 
   Serial.print("Rfid status ist: ");
   Serial.println(rfidStatus);
-  if (timeClient.getHours() == 17 || timeClient.getHours() == 18 && timeClient.getHours() != lastWatered)
+  if (timeClient.getHours() == 15 || timeClient.getHours() == 18 && timeClient.getHours() != lastWatered)
   {
     rfidStatus = 0;
     stepper.setCurrentPosition(0);
