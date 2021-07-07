@@ -1,8 +1,11 @@
 #include <Arduino.h>
 //STEPPER LIBRARY
 #include <AccelStepper.h>
-#define MotorInterfaceType 4
 
+// Define motor interface type
+#define motorInterfaceType 1
+const int dirPin = D1;
+const int stepPin = D2;
 //WIFI CONNECTION
 //Wichtig: WIFIconfig.h mit Wifi credintials updaten
 #include <ESP8266HTTPClient.h>
@@ -39,7 +42,7 @@ int lastWatered = 0;
 long prevTime = 0;
 long timer = 1000;
 
-//HTTP client: 
+//HTTP client:
 HTTPClient sender;
 WiFiClient wifi;
 
@@ -59,7 +62,8 @@ String backendIP = "http://192.168.178.146:3000";
 
 //STEPPER
 int stepdir = 0;
-AccelStepper stepper = AccelStepper(MotorInterfaceType, D1, D2, D3, D4);
+//AccelStepper stepper = AccelStepper(MotorInterfaceType, D1, D2, D3, D4);
+AccelStepper stepper = AccelStepper(motorInterfaceType, stepPin, dirPin);
 void calibration();
 
 void setup()
@@ -149,22 +153,23 @@ void getPlantInfoDB(String rdifUID)
 {
   if (WiFi.status() == WL_CONNECTED)
   { //Check WiFi connection status
-  Serial.println(rdifUID);
-  String url = backendIP + "/plant/status/" + rdifUID;
-  Serial.println(url);
-  sender.begin(wifi, url);
+    Serial.println(rdifUID);
+    String url = backendIP + "/plant/status/" + rdifUID;
+    Serial.println(url);
+    sender.begin(wifi, url);
 
     // HTTP-Code der Response speichern
     int httpCode = sender.GET();
     Serial.println(httpCode);
-    if (httpCode > 0) {
-      
+    if (httpCode > 0)
+    {
+
       // Anfrage wurde gesendet und Server hat geantwortet
       // Info: Der HTTP-Code für 'OK' ist 200
 
-        // Hier wurden die Daten vom Server empfangen
+      // Hier wurden die Daten vom Server empfangen
 
-        // String vom Webseiteninhalt speichern
+      // String vom Webseiteninhalt speichern
       String payload = sender.getString();
       // Ausgabe des Return Codes
       Serial.println(httpCode);
@@ -178,9 +183,9 @@ void getPlantInfoDB(String rdifUID)
       {
         addNewUIDToDB(rdifUID);
       }
-      
-      
-    }else{
+    }
+    else
+    {
       // Falls HTTP-Error
       Serial.printf("HTTP-Error");
     }
@@ -343,7 +348,7 @@ void loop()
     if (counter < maxRotations)
     {
       runStepper();
-      counter = counter +1;
+      counter = counter + 1;
       prevTime = millis();
       Serial.print("currently at step: ");
       Serial.println(counter);
