@@ -1,7 +1,7 @@
 #include <Arduino.h>
 //STEPPER LIBRARY
 #include <AccelStepper.h>
-#define MotorInterfaceType 4
+#define MotorInterfaceType 1
 
 //WIFI CONNECTION
 //Wichtig: WIFIconfig.h mit Wifi credintials updaten
@@ -37,7 +37,7 @@ int lastWatered = 0;
 
 // Timer: Wait for RFID-Reading
 long prevTime = 0;
-long timer = 1000;
+long timer = 300;
 
 //HTTP client: 
 HTTPClient sender;
@@ -53,13 +53,14 @@ byte nuidPICC[4];
 //WASSER PUMPE
 #define pumpPin D8
 //endschalter
-#define endSchalter A0
+#define endSchalter D1
 //backend IP entsprechend eurer IP anpassen
-String backendIP = "http://192.168.178.146:3000";
+String backendIP = "http://192.168.178.170:3000";
 
 //STEPPER
-int stepdir = 0;
-AccelStepper stepper = AccelStepper(MotorInterfaceType, D1, D2, D3, D4);
+#define dirPin D2
+#define stepPin D3
+AccelStepper stepper = AccelStepper(MotorInterfaceType, stepPin, dirPin);
 void calibration();
 
 void setup()
@@ -74,11 +75,11 @@ void setup()
     key.keyByte[i] = 0xFF;
   }
   //Stepper setup
-  stepper.setMaxSpeed(100);
-  stepper.setAcceleration(50);
+  stepper.setMaxSpeed(1000);
+  stepper.setAcceleration(500);
 
   pinMode(pumpPin, OUTPUT); //PumpenPin definieren
-  pinMode(endSchalter, INPUT_PULLUP);
+  pinMode(endSchalter, INPUT);
   //Mit WIFI verbinden
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   Serial.println("Waiting for connection");
@@ -283,8 +284,8 @@ void lookForNewRFIDUID()
 }
 void runStepper()
 {
-  // Run the motor forward at 200 steps/second until the motor reaches 400 steps (2 revolutions):
-  while (stepper.currentPosition() != -600)
+  // Run the motor forward at 600 steps/second until the motor reaches 400 steps (2 revolutions):
+  while (stepper.currentPosition() != -1800)
   {
     stepper.setSpeed(-500);
     stepper.runSpeed();
@@ -297,7 +298,7 @@ void calibration()
 {
   while (1)
   {
-    if (analogRead(endSchalter) < 600)
+    if (digitalRead(endSchalter) == HIGH)
     {
       stepper.setSpeed(500);
       stepper.runSpeed();
@@ -321,15 +322,16 @@ void loop()
   timeClient.update();
   Serial.print("Es ist Stunde: ");
   Serial.println(timeClient.getHours());
-
+  //derzeitigen system Status ausgeben
   Serial.print("Rfid status ist: ");
   Serial.println(rfidStatus);
-  if (timeClient.getHours() == 13 || timeClient.getHours() == 18 && timeClient.getHours() != lastWatered)
+  
+  //Zwei mal täglich fahren
+  if (timeClient.getHours() == 7 || timeClient.getHours() == 6 && timeClient.getHours() != lastWatered)
   {
     rfidStatus = 0;
     stepper.setCurrentPosition(0);
     lastWatered = timeClient.getHours();
-    Serial.println("Es ist zeit zu gießen");
     //rfid status Kalibrierung
   }
   else
@@ -340,8 +342,15 @@ void loop()
   if (rfidStatus == 0)
   {
     //run Stepper
+    /*if (stepper.distanceToGo() == 0) {
+      stepper.moveTo(stepper.currentPosition() + 2000);
+    }
+		  
+    stepper.run();
+    lookForNewRFIDUID();*/
     if (counter < maxRotations)
     {
+      stepper.setCurrentPosition(0);
       runStepper();
       counter = counter +1;
       prevTime = millis();
@@ -354,7 +363,7 @@ void loop()
           break;
         }
         lookForNewRFIDUID();
-      }
+      } 
     }
     else
     {
