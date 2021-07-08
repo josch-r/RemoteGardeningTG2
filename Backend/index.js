@@ -1,6 +1,7 @@
 const express = require("express");
 const axios = require("axios");
 const nodemailer = require('nodemailer');
+const cors = require("cors");
 let plantsCollection;
 const app = express();
 const port = 3000;
@@ -8,6 +9,7 @@ const port = 3000;
 //db connection
 const MongoClient = require("mongodb").MongoClient;
 const { ObjectId } = require("bson");
+const { ppid } = require("process");
 const uri =
     "mongodb+srv://RemoteGardeningAdmin:LQu5bDDvZ2aziOSq@getraenkelistedb.4hnwb.mongodb.net/RemoteGardening?retryWrites=true&w=majority";
 const client = new MongoClient(uri, {
@@ -18,6 +20,7 @@ const client = new MongoClient(uri, {
 async function connectDB() {
     client.connect((err) => {
         plantsCollection = client.db("RemoteGardening").collection("plants");
+        getAllPlants();
         if (err) throw err;
     });
 }
@@ -47,7 +50,8 @@ async function sendNotiMail(uid, wifiName) {
         from: 'remote.gardining@gmail.com',
         to: 'joschua.rothenbacher@hfg.design, jannes.blobel@hfg.design, fabienne.vatter@hfg.design',
         subject: 'A new Plant has been added to your remote garden!',
-        text: 'Hi ihr Aperolis! Eine neue Pflanze wurde erkannt die UID dazu ist : ' + uid + '. Der Wifi name lautet: ' + wifiName + ' GaLiGrü! Euer Backend <3',
+        text: 'Hi ihr Aperolis! Eine neue Pflanze wurde erkannt die UID dazu ist : ' + uid + '. Der Wifi name lautet: ' + wifiName +
+         'Ihr könnt nun diese Pflanze unter der Adresse: http://'+ address + ':8080/add/'+uid+' bearbeiten! GaLiGrü! Euer Backend <3',
     };
 
     transporter.sendMail(mailOptions, function (error, info) {
@@ -59,6 +63,7 @@ async function sendNotiMail(uid, wifiName) {
     });
 }
 
+app.use(cors());
 app.use(express.json());
 app.get("/", (req, res) => {
     res.send("service is alive");
@@ -92,25 +97,30 @@ function decideWater(entry) {
             updateLastWatered(entry.rfidUID);
             break;
         case 2:
-            if (timeDifference > 43200) {
+            if (timeDifference > 21600) {
                 waterTime = 20000;
             }
             break;
         case 3:
-            if (timeDifference > 86400) {
+            if (timeDifference > 43200) {
                 waterTime = 20000;
             }
             break;
         case 4:
-            if (timeDifference > 172800) {
+            if (timeDifference > 151200) {
                 waterTime = 20000;
             }
             break;
         case 5:
-            if (timeDifference > 259200) {
+            if (timeDifference > 201600) {
                 waterTime = 20000;
             }
             break;
+        case 6:
+            if (timeDifference > 302400) {
+                    waterTime = 20000;
+                }
+                break;
     }
     if (waterTime == 0) {
         console.log("this plant doesn't need Water right now");
@@ -142,6 +152,50 @@ async function updateLastWatered(ID) {
         }
     });
 }
+
+
+/// fabi edited
+
+app.get("/overview/:id", async(req, res) => {
+    console.log(req.params.id);
+    try {
+        let code = req.params.id;
+        let result = await plantsCollection.findOne({ "rfidUID": code });
+        if (result == undefined) {
+            res.status(404).end();
+        } else {
+            res.status(200).send({ name: result.name, description: result.description, waterlevel: result.waterlevel, lastWatered: result.lastWatered, ownerId: result.owner, Size: result.plantSize });
+        }
+    }
+    catch(error) {
+        console.log(error);
+        res.status(404).send("No MongoDB entry found!");
+    }
+});
+app.post("/overview/update", async(req, res) => {
+    console.log(req.body);
+    updatePlant(req.body);
+});
+
+async function getAllPlants(){
+   plantsCollection.find({}).toArray(function(err, result) {
+        console.log("Your entries in MongoDB are: ");
+        console.log(result);
+    });
+}
+
+async function updatePlant(plant) {
+    console.log("plant is: " + plant);
+    let addInfos = { $set: {name: plant.name, owner: plant.owner, plantsize : plant.growth, description: plant.description, waterLevel: plant.waterLevel }};
+    plantsCollection.updateOne({ "rfidUID": plant.rfidUID }, addInfos, (err, res) => {
+        if (err) throw err;
+        else {
+            console.log("sucessfully updated plant entry! res: " + res);
+        }
+});
+}
+
+
 app.listen(port, () => {
     console.log(`RemoteGardeningBackend listening at http://localhost:${port}`);
 });
