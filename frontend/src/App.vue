@@ -24,26 +24,28 @@
     }
   }
 }
-button {
+#button {
     padding: 8px 20px;
     font-size: 17px;
     text-align: center;
     cursor: pointer;
     outline: none;
     color: #fff;
-    background-color:#0b380d;
+    background-color:#09800f;
     border: none;
     border-radius: 15px;
-    box-shadow: 0 6px #82daa7;
-    margin-left: 20px;
-    justify-content: space-between;
 }
-button:hover {
+#button:hover {
     background-color: #0b380d;
+    color: #fff;
 }
-button:active {
+#button:active {
   background-color: #0b380d;
   box-shadow: 0 0px;
-  transform: translateY(4px);
+  transform: translateY(4px); 
+}
+#button:focus {
+  color:#09800f;
+  background-color: #0b380d;
 }
 </style>
