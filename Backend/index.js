@@ -54,7 +54,7 @@ async function sendNotiMail(uid, wifiName) {
          'Ihr könnt nun diese Pflanze unter der Adresse: http://'+ address + ':8080/add/'+uid+' bearbeiten! GaLiGrü! Euer Backend <3',
     };
 
-    transporter.sendMail(mailOptions, function (error, info) {
+    transporter.sendMail(mailOptions, function(error, info) {
         if (error) {
             console.log(error);
         } else {
@@ -69,7 +69,7 @@ app.get("/", (req, res) => {
     res.send("service is alive");
 });
 
-app.post("/plant/register", async (req, res) => {
+app.post("/plant/register", async(req, res) => {
     let rfidUID = req.body.uid;
     let wifiName = req.body.wifiName;
     console.log(rfidUID);
@@ -85,6 +85,7 @@ app.post("/plant/register", async (req, res) => {
     res.status(200).send("sucessfully added plant").end();
     await sendNotiMail(rfidUID, wifiName);
 });
+
 function decideWater(entry) {
     let timeNow = Date.now() / 1000;
     let waterTime = 0;
@@ -128,7 +129,7 @@ function decideWater(entry) {
     return waterTime;
 }
 
-app.get("/plant/status/:uid", async (req, res) => {
+app.get("/plant/status/:uid", async(req, res) => {
     let rfidUID = req.params.uid;
     console.log(rfidUID);
     //get mongoDB entry for UID
