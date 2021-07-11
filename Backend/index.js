@@ -16,7 +16,7 @@ const client = new MongoClient(uri, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
 });
-
+//connect to our mongodb
 async function connectDB() {
     client.connect((err) => {
         plantsCollection = client.db("RemoteGardening").collection("plants");
@@ -26,14 +26,15 @@ async function connectDB() {
 }
 connectDB();
 
+//Output out local ip adress to get the right connection to the esp
 var address,
     ifaces = require('os').networkInterfaces();
 for (var dev in ifaces) {
     ifaces[dev].filter((details) => details.family === 'IPv4' && details.internal === false ? address = details.address : undefined);
 }
-
 console.log(address);
 
+//Function to send our notification email if a new plant has been scanned.
 async function sendNotiMail(uid, wifiName) {
     let transporter = nodemailer.createTransport({
         //service: 'gmail',
@@ -69,6 +70,7 @@ app.get("/", (req, res) => {
     res.send("service is alive");
 });
 
+//Post endpoint to register a new plant
 app.post("/plant/register", async(req, res) => {
     let rfidUID = req.body.uid;
     let wifiName = req.body.wifiName;
@@ -86,6 +88,7 @@ app.post("/plant/register", async(req, res) => {
     await sendNotiMail(rfidUID, wifiName);
 });
 
+//Function to compare the current time and the last Watered time and send the time in ms to water or not to water
 function decideWater(entry) {
     let timeNow = Date.now() / 1000;
     let waterTime = 0;
@@ -129,6 +132,7 @@ function decideWater(entry) {
     return waterTime;
 }
 
+//GET endpoint to get the plant entry in our DB and to decide if it needs water in this moment
 app.get("/plant/status/:uid", async(req, res) => {
     let rfidUID = req.params.uid;
     console.log(rfidUID);
@@ -144,6 +148,7 @@ app.get("/plant/status/:uid", async(req, res) => {
         }
     });
 });
+//If the plant was watered update the database entry with the new value for lastWatered
 async function updateLastWatered(ID) {
     let newWateredDate = { $set: { lastWatered: Date.now() } };
     plantsCollection.updateOne({ 'rfidUID': ID }, newWateredDate, (err, res) => {
@@ -155,8 +160,8 @@ async function updateLastWatered(ID) {
 }
 
 
-/// fabi edited
-
+/// Frontend API endpoints
+//GET Endpoint for our frontend with the values of the chosen plant
 app.get("/overview/:id", async(req, res) => {
     console.log(req.params.id);
     try {
@@ -173,11 +178,12 @@ app.get("/overview/:id", async(req, res) => {
         res.status(404).send("No MongoDB entry found!");
     }
 });
+//Post endpoint to update the plant entry with new values
 app.post("/overview/update", async(req, res) => {
     console.log(req.body);
     updatePlant(req.body);
 });
-
+//Function to get all current entries in our DB 
 async function getAllPlants(){
    plantsCollection.find({}).toArray(function(err, result) {
         console.log("Your entries in MongoDB are: ");
@@ -185,6 +191,7 @@ async function getAllPlants(){
     });
 }
 
+//Update plant entry with new values
 async function updatePlant(plant) {
     console.log("plant is: " + plant);
     let addInfos = { $set: {name: plant.name, owner: plant.owner, plantsize : plant.growth, description: plant.description, waterLevel: plant.waterLevel }};
@@ -195,7 +202,6 @@ async function updatePlant(plant) {
         }
 });
 }
-
 
 app.listen(port, () => {
     console.log(`RemoteGardeningBackend listening at http://localhost:${port}`);

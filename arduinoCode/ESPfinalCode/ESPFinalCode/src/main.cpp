@@ -82,7 +82,7 @@ void setup()
   stepper.setAcceleration(500);
 
   pinMode(pumpPin, OUTPUT); //PumpenPin definieren
-  pinMode(endSchalter, INPUT);
+  pinMode(endSchalter, INPUT); //endschalter als INPUT definieren
   //Mit WIFI verbinden
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   Serial.println("Waiting for connection");
@@ -163,13 +163,7 @@ void getPlantInfoDB(String rdifUID)
     Serial.println(httpCode);
     if (httpCode > 0)
     {
-
-      // Anfrage wurde gesendet und Server hat geantwortet
-      // Info: Der HTTP-Code für 'OK' ist 200
-
-      // Hier wurden die Daten vom Server empfangen
-
-      // String vom Webseiteninhalt speichern
+      // String vom request speichern
       String payload = sender.getString();
       // Ausgabe des Return Codes
       Serial.println(httpCode);
@@ -181,6 +175,7 @@ void getPlantInfoDB(String rdifUID)
       }
       else if (httpCode == 404)
       {
+        //Falls der RFID code nicht in unserer Datenbank existiert --> leg einen neuen Eintrag an
         addNewUIDToDB(rdifUID);
       }
     }
@@ -192,41 +187,11 @@ void getPlantInfoDB(String rdifUID)
 
     // Wenn alles abgeschlossen ist, wird die Verbindung wieder beendet
     sender.end();
-    /*HTTPClient http;
-    WiFiClient client;
-    //Zieladresse für Get request
-    String url = backendIP + "/plant/status/" + rdifUID;
-    Serial.println(url);
-    http.begin(url);
-    int httpCode = http.GET();
-    // Antwort: Payload
-    if (httpCode > 0)
-    {
-      String payload = http.getString();
-      // Ausgabe des Return Codes
-      Serial.println(httpCode);
-      if (httpCode == 200)
-      {
-        Serial.println(payload);
-        //unsere Pflanze gießen für die ermittelte Zeit
-        waterPlant(payload.toInt());
-      }
-      else if (httpCode == 404)
-      {
-        addNewUIDToDB(rdifUID);
-      }
-      //Http_connection schließen
-      http.end();
-    }
-    else
-    {
-      Serial.println("error in GET request");
-      Serial.println(httpCode);
-    }
-  } */
+    
   }
   else
   {
+    //keine netzwerkverbindung
     Serial.println("Error in WiFi connection");
   }
 }
@@ -245,7 +210,7 @@ void printDec(byte *buffer, byte bufferSize)
   Serial.println(myString);
   //Datenbank Abfrage nach Pflanzen Status/Gießbedarf
   getPlantInfoDB(myString);
-  myString = "";
+  myString = ""; //String variable leeren
 }
 //Loop funktion um nach neuen RFID Tags zu suchen
 void lookForNewRFIDUID()
@@ -288,26 +253,23 @@ void lookForNewRFIDUID()
 }
 void runStepper()
 {
-  // Run the motor forward at 600 steps/second until the motor reaches 400 steps (2 revolutions):
+  // Run the motor forward at 500 steps/second until the motor reaches 1800 steps (4 revolutions):
   while (stepper.currentPosition() != -1800)
   {
     stepper.setSpeed(-500);
     stepper.runSpeed();
-    //Serial.print("Stepper pos: ");
-    //Serial.println(stepper.currentPosition());
     yield();
   }
 }
 void calibration()
 {
+  //solange der endschalter nicht erreicht wird, fahr den stepper weiter.
   while (1)
   {
     if (digitalRead(endSchalter) == HIGH)
     {
       stepper.setSpeed(500);
       stepper.runSpeed();
-      //Serial.print("Stepper pos: ");
-      //Serial.println(stepper.currentPosition());
       yield();
     }
     else
@@ -316,8 +278,9 @@ void calibration()
     }
   }
 }
-
+//counter speichert wie oft die runStepper methode aufgerufen wurde
 int counter = 0;
+//maxRotations bestimmt wie oft wir runStepper maximal ausführen
 int maxRotations = 700;
 void loop()
 {
@@ -343,13 +306,6 @@ void loop()
 
   if (rfidStatus == 0)
   {
-    //run Stepper
-    /*if (stepper.distanceToGo() == 0) {
-      stepper.moveTo(stepper.currentPosition() + 2000);
-    }
-		  
-    stepper.run();
-    lookForNewRFIDUID();*/
     if (counter < maxRotations)
     {
       stepper.setCurrentPosition(0);
@@ -372,10 +328,5 @@ void loop()
       Serial.println("Ende der gewindestange erreicht");
       rfidStatus = 2;
     }
-  }
-  else if (rfidStatus == 1)
-  {
-    //Serial.println("Doing Something");
-    //do something
   }
 }
