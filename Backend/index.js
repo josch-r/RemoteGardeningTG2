@@ -11,7 +11,7 @@ const MongoClient = require("mongodb").MongoClient;
 const { ObjectId } = require("bson");
 const { ppid } = require("process");
 const uri =
-    "mongodb+srv://RemoteGardeningAdmin:LQu5bDDvZ2aziOSq@getraenkelistedb.4hnwb.mongodb.net/RemoteGardening?retryWrites=true&w=majority";
+    "Mongo Uri goes here (we should have used a .env file for this, but i won't add it 4 years later lol)";
 const client = new MongoClient(uri, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
@@ -43,13 +43,13 @@ async function sendNotiMail(uid, wifiName) {
         secure: false, // true for 465, false for other ports
         auth: {
             user: 'remote.gardining@gmail.com',
-            pass: '#WS2020iot'
+            pass: 'GladNoOneDidCrazyStuffWithThisLeakedPassword'
         }
     });
 
     let mailOptions = {
-        from: 'remote.gardining@gmail.com',
-        to: 'joschua.rothenbacher@hfg.design, jannes.blobel@hfg.design, fabienne.vatter@hfg.design',
+        from: 'remote.gardining@gmail.com <--- this typo is still embarrassing',
+        to: 'totallynotourprivateemailadresses@gmail.com',
         subject: 'A new Plant has been added to your remote garden!',
         text: 'Hi ihr Aperolis! Eine neue Pflanze wurde erkannt die UID dazu ist : ' + uid + '. Der Wifi name lautet: ' + wifiName +
          'Ihr könnt nun diese Pflanze unter der Adresse: http://'+ address + ':8080/add/'+uid+' bearbeiten! GaLiGrü! Euer Backend <3',
