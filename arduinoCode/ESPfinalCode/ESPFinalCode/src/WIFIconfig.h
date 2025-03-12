@@ -1,2 +1,2 @@
 #define WIFI_SSID "RKS55"
-#define WIFI_PASSWORD "6xyRKSwg"
+#define WIFI_PASSWORD "this was a real wifi password"
